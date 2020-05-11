@@ -5,7 +5,9 @@
 #include <Servo.h>
 
 Servo motor[2];
-unsigned long last_input_time = 0; // Milliseconds since the last throttle/rudder input
+unsigned long last_input_time = 0;  // Milliseconds when the last throttle/rudder input occurred
+unsigned long time_since_input = 0; // Milliseconds since the last throttle/rudder input
+
 float rudder_percent = 0.0f;
 float left_power = 0.0f;
 float right_power = 0.0f;
@@ -20,8 +22,8 @@ const int PIN_PWM_MOTOR2 = 5;
 const int PIN_WHITE_LIGHTS = 6;            // Bow, mast, and stern (masthead lights)
 const int PIN_SIDELIGHTS = 7;              // Red to the left (port) and green to the right (starboard)
 const int PIN_STOPPED_LIGHTS = 8;          // Red "not under command" lights
-const long ANCHOR_LIGHT_INTERVAL = 10000;  // Milliseconds before navigation lights are turned off
-const long STOPPED_LIGHT_INTERVAL = 30000; // Milliseconds before the ship is "not under command"
+const long ANCHOR_LIGHT_INTERVAL = 5000;   // Milliseconds before navigation lights are turned off
+const long STOPPED_LIGHT_INTERVAL = 20000; // Milliseconds before the ship is "not under command"
 const float TOLERANCE = 0.305f;
 
 
@@ -64,10 +66,10 @@ void mix_motor_torque() {
   left_power = constrain(throttlePercent - rudder_percent, 0.0f, 1.0f);
   right_power = constrain(throttlePercent + rudder_percent, 0.0f, 1.0f);
   
-  Serial.print("Left: ");
-  Serial.print(left_power);
-  Serial.print(" Right: ");
-  Serial.println(right_power);
+  //Serial.print("Left: ");
+  //Serial.print(left_power);
+  //Serial.print(" Right: ");
+  //Serial.println(right_power);
 
   // Send signal to the motors
   motor[0].write(180 * left_power);
@@ -77,36 +79,41 @@ void mix_motor_torque() {
 // Based on current speed and time since the last input, determine whether the ship is running,
 // at anchor, or completely stopped. Set the lights accordingly.
 void control_lights() {
-  // There is input
+  Serial.print("Milliseconds: ");
+  Serial.print(millis());
+  Serial.print(" Last input: ");
+  Serial.println(time_since_input);
+
   if(left_power > TOLERANCE || right_power > TOLERANCE || rudder_percent > TOLERANCE) {
     last_input_time = millis();
+    time_since_input = 0;
+  }
+  else {
+    time_since_input = millis() - last_input_time;
+  }
+  
+  // There is relatively recent input
+  if(time_since_input < ANCHOR_LIGHT_INTERVAL) {
     // Running lights
-    Serial.println("Running lights");
+    //Serial.println("Running lights");
     digitalWrite(PIN_WHITE_LIGHTS, HIGH);
     digitalWrite(PIN_SIDELIGHTS, HIGH);
+    digitalWrite(PIN_STOPPED_LIGHTS, LOW);
+  }
+  // There has been no input for a little while
+  else if(time_since_input < STOPPED_LIGHT_INTERVAL) {
+    // Anchor lights
+    //Serial.println("Anchor lights");
+    digitalWrite(PIN_WHITE_LIGHTS, HIGH);
+    digitalWrite(PIN_SIDELIGHTS, LOW);
     digitalWrite(PIN_STOPPED_LIGHTS, LOW);
   }
   // There has been no input for a long time
-  else if(millis() - last_input_time > STOPPED_LIGHT_INTERVAL) {
-    // Stopped ("not under command") lights
-    Serial.println("Stopped lights");
+  else {
+    // Stopped "not under command" lights
+    //Serial.println("Stopped lights");
     digitalWrite(PIN_WHITE_LIGHTS, LOW);
     digitalWrite(PIN_SIDELIGHTS, LOW);
-    digitalWrite(PIN_STOPPED_LIGHTS, HIGH);
-  }
-  // There has been no input for a little while
-  else if(millis() - last_input_time > ANCHOR_LIGHT_INTERVAL) {
-    // Anchor lights
-    Serial.println("Anchor lights");
-    digitalWrite(PIN_WHITE_LIGHTS, HIGH);
-    digitalWrite(PIN_SIDELIGHTS, LOW);
-    digitalWrite(PIN_STOPPED_LIGHTS, LOW);
-  }
-  // Just started
-  else {
-    Serial.println("All lights");
-    digitalWrite(PIN_WHITE_LIGHTS, HIGH);
-    digitalWrite(PIN_SIDELIGHTS, HIGH);
     digitalWrite(PIN_STOPPED_LIGHTS, HIGH);
   }
 }
