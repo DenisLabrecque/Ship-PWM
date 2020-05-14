@@ -71,10 +71,10 @@ void mix_motor_torque() {
   left_power = constrain(throttle_percent - rudder_percent, 0.0f, 1.0f);
   right_power = constrain(throttle_percent + rudder_percent, 0.0f, 1.0f);
   
-  Serial.print("Left: ");
-  Serial.print(left_power);
-  Serial.print(" Right: ");
-  Serial.println(right_power);
+  Serial.print("Throttle: ");
+  Serial.print(throttle_pwm_value);
+  Serial.print(" Rudder: ");
+  Serial.println(rudder_pwm_value);
 
   // Send signal to the motors
   // Requiring 30 degrees seems to fix connection losses
