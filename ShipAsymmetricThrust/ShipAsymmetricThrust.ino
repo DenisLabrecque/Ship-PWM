@@ -77,8 +77,11 @@ void mix_motor_torque() {
   Serial.println(right_power);
 
   // Send signal to the motors
-  motor[0].write(180 * left_power);
-  motor[1].write(180 * right_power);
+  // Requiring 30 degrees seems to fix connection losses
+  float left = constrain(180 * left_power, 30, 180);
+  float right = constrain(180 * right_power, 30, 180);
+  motor[0].write(left);
+  motor[1].write(right);
 }
 
 
